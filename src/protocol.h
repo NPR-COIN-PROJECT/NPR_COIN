@@ -18,7 +18,7 @@
 extern bool fTestNet;
 static inline unsigned short GetDefaultPort(const bool testnet = fTestNet)
 {
-    return testnet ? 47983 : 37983;
+    return testnet ? 48027 : 38027;
 }
 
 
@@ -69,6 +69,7 @@ class CMessageHeader
 enum
 {
     NODE_NETWORK = (1 << 0),
+    NODE_BLOOM = (1 << 1),
 };
 
 /** A CService with information about it as peer */
@@ -76,7 +77,7 @@ class CAddress : public CService
 {
     public:
         CAddress();
-        explicit CAddress(CService ipIn, uint64_t nServicesIn=NODE_NETWORK);
+        explicit CAddress(CService ipIn, uint64 nServicesIn=NODE_NETWORK);
 
         void Init();
 
@@ -99,13 +100,13 @@ class CAddress : public CService
 
     // TODO: make private (improves encapsulation)
     public:
-        uint64_t nServices;
+        uint64 nServices;
 
         // disk and network only
         unsigned int nTime;
 
         // memory only
-        int64_t nLastTry;
+        int64 nLastTry;
 };
 
 /** inv message data */
@@ -133,6 +134,15 @@ class CInv
     public:
         int type;
         uint256 hash;
+};
+
+enum
+{
+    MSG_TX = 1,
+    MSG_BLOCK,
+    // Nodes may always request a MSG_FILTERED_BLOCK in a getdata, however,
+    // MSG_FILTERED_BLOCK should not appear in any invs except as a part of getdata.
+    MSG_FILTERED_BLOCK,
 };
 
 #endif // __INCLUDED_PROTOCOL_H__
