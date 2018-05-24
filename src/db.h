@@ -17,16 +17,14 @@ class CAddress;
 class CAddrMan;
 class CBlockLocator;
 class CDiskBlockIndex;
-class CDiskTxPos;
 class CMasterKey;
 class COutPoint;
-class CTxIndex;
 class CWallet;
 class CWalletTx;
 
 extern unsigned int nWalletDBUpdated;
 
-void ThreadFlushWalletDB(void* parg);
+void ThreadFlushWalletDB(const std::string& strWalletFile);
 bool BackupWallet(const CWallet& wallet, const std::string& strDest);
 
 
@@ -35,8 +33,7 @@ class CDBEnv
 private:
     bool fDbEnvInit;
     bool fMockDb;
-    boost::filesystem::path pathEnv;
-    std::string strPath;
+    boost::filesystem::path path;
 
     void EnvShutdown();
 
@@ -49,7 +46,7 @@ public:
     CDBEnv();
     ~CDBEnv();
     void MakeMock();
-    bool IsMock() { return fMockDb; };
+    bool IsMock() { return fMockDb; }
 
     /*
      * Verify that database file strFile is OK. If it is not,
@@ -69,7 +66,7 @@ public:
     typedef std::pair<std::vector<unsigned char>, std::vector<unsigned char> > KeyValPair;
     bool Salvage(std::string strFile, bool fAggressive, std::vector<KeyValPair>& vResult);
 
-    bool Open(boost::filesystem::path pathEnv_);
+    bool Open(const boost::filesystem::path &path);
     void Close();
     void Flush(bool fShutdown);
     void CheckpointLSN(std::string strFile);
@@ -102,6 +99,7 @@ protected:
     explicit CDB(const char* pszFile, const char* pszMode="r+");
     ~CDB() { Close(); }
 public:
+    void Flush();
     void Close();
 private:
     CDB(const CDB&);
@@ -307,6 +305,12 @@ public:
 
     bool static Rewrite(const std::string& strFile, const char* pszSkip = NULL);
 };
+
+
+
+
+
+
 
 
 /** Access to the (IP) address database (peers.dat) */

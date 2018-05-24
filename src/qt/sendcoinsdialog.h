@@ -1,3 +1,7 @@
+// Copyright (c) 2011-2013 The Bitcoin developers
+// Distributed under the MIT/X11 software license, see the accompanying
+// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+
 #ifndef SENDCOINSDIALOG_H
 #define SENDCOINSDIALOG_H
 
@@ -30,6 +34,7 @@ public:
      */
     QWidget *setupTabChain(QWidget *prev);
 
+    void setAddress(const QString &address);
     void pasteEntry(const SendCoinsRecipient &rv);
     bool handleURI(const QString &uri);
 
@@ -39,7 +44,7 @@ public slots:
     void accept();
     SendCoinsEntry *addEntry();
     void updateRemoveEnabled();
-    void setBalance(qint64 balance, qint64 stake, qint64 unconfirmedBalance, qint64 immatureBalance);
+    void setBalance(qint64 balance, qint64 unconfirmedBalance, qint64 immatureBalance);
 
 private:
     Ui::SendCoinsDialog *ui;

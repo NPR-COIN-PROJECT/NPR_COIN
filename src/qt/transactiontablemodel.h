@@ -1,3 +1,7 @@
+// Copyright (c) 2011-2013 The Bitcoin developers
+// Distributed under the MIT/X11 software license, see the accompanying
+// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+
 #ifndef TRANSACTIONTABLEMODEL_H
 #define TRANSACTIONTABLEMODEL_H
 
@@ -14,6 +18,7 @@ class WalletModel;
 class TransactionTableModel : public QAbstractTableModel
 {
     Q_OBJECT
+
 public:
     explicit TransactionTableModel(CWallet* wallet, WalletModel *parent = 0);
     ~TransactionTableModel();
@@ -47,9 +52,7 @@ public:
         /** Is transaction confirmed? */
         ConfirmedRole,
         /** Formatted amount, without brackets when unconfirmed */
-        FormattedAmountRole,
-        /** Transaction status (TransactionRecord::Status) */
-        StatusRole
+        FormattedAmountRole
     };
 
     int rowCount(const QModelIndex &parent) const;
@@ -57,11 +60,13 @@ public:
     QVariant data(const QModelIndex &index, int role) const;
     QVariant headerData(int section, Qt::Orientation orientation, int role) const;
     QModelIndex index(int row, int column, const QModelIndex & parent = QModelIndex()) const;
+
 private:
     CWallet* wallet;
     WalletModel *walletModel;
     QStringList columns;
     TransactionTablePriv *priv;
+    int cachedNumBlocks;
 
     QString lookupAddress(const std::string &address, bool tooltip) const;
     QVariant addressColor(const TransactionRecord *wtx) const;
@@ -82,5 +87,4 @@ public slots:
     friend class TransactionTablePriv;
 };
 
-#endif
-
+#endif // TRANSACTIONTABLEMODEL_H

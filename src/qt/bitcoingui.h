@@ -1,14 +1,20 @@
+// Copyright (c) 2011-2013 The Bitcoin developers
+// Distributed under the MIT/X11 software license, see the accompanying
+// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+
 #ifndef BITCOINGUI_H
 #define BITCOINGUI_H
 
 #include <QMainWindow>
 #include <QSystemTrayIcon>
-
-#include <stdint.h>
+#include <QMap>
 
 class TransactionTableModel;
+class WalletFrame;
+class WalletView;
 class ClientModel;
 class WalletModel;
+class WalletStack;
 class TransactionView;
 class OverviewPage;
 class AddressBookPage;
@@ -17,15 +23,17 @@ class SignVerifyMessageDialog;
 class Notificator;
 class RPCConsole;
 
+class CWallet;
+
 QT_BEGIN_NAMESPACE
 class QLabel;
-class QLineEdit;
-class QTableView;
-class QAbstractItemModel;
 class QModelIndex;
 class QProgressBar;
 class QStackedWidget;
 class QUrl;
+class QListWidget;
+class QPushButton;
+class QAction;
 QT_END_NAMESPACE
 
 /**
@@ -35,7 +43,10 @@ QT_END_NAMESPACE
 class BitcoinGUI : public QMainWindow
 {
     Q_OBJECT
+
 public:
+    static const QString DEFAULT_WALLET;
+
     explicit BitcoinGUI(QWidget *parent = 0);
     ~BitcoinGUI();
 
@@ -47,29 +58,32 @@ public:
         The wallet model represents a bitcoin wallet, and offers access to the list of transactions, address book and sending
         functionality.
     */
-    void setWalletModel(WalletModel *walletModel);
+
+    bool addWallet(const QString& name, WalletModel *walletModel);
+    bool setCurrentWallet(const QString& name);
+
+    void removeAllWallets();
+
+    /** Used by WalletView to allow access to needed QActions */
+    // Todo: Use Qt signals for these
+    QAction * getOverviewAction() { return overviewAction; }
+    QAction * getHistoryAction() { return historyAction; }
+    QAction * getAddressBookAction() { return addressBookAction; }
+    QAction * getReceiveCoinsAction() { return receiveCoinsAction; }
+    QAction * getSendCoinsAction() { return sendCoinsAction; }
 
 protected:
     void changeEvent(QEvent *e);
     void closeEvent(QCloseEvent *event);
     void dragEnterEvent(QDragEnterEvent *event);
     void dropEvent(QDropEvent *event);
+    bool eventFilter(QObject *object, QEvent *event);
 
 private:
     ClientModel *clientModel;
-    WalletModel *walletModel;
-
-    QStackedWidget *centralWidget;
-
-    OverviewPage *overviewPage;
-    QWidget *transactionsPage;
-    AddressBookPage *addressBookPage;
-    AddressBookPage *receiveCoinsPage;
-    SendCoinsDialog *sendCoinsPage;
-    SignVerifyMessageDialog *signVerifyMessageDialog;
+    WalletFrame *walletFrame;
 
     QLabel *labelEncryptionIcon;
-    QLabel *labelStakingIcon;
     QLabel *labelConnectionsIcon;
     QLabel *labelBlocksIcon;
     QLabel *progressBarLabel;
@@ -87,12 +101,9 @@ private:
     QAction *receiveCoinsAction;
     QAction *optionsAction;
     QAction *toggleHideAction;
-    QAction *exportAction;
     QAction *encryptWalletAction;
     QAction *backupWalletAction;
     QAction *changePassphraseAction;
-    QAction *unlockWalletAction;
-    QAction *lockWalletAction;
     QAction *aboutQtAction;
     QAction *openRPCConsoleAction;
 
@@ -102,8 +113,8 @@ private:
     RPCConsole *rpcConsole;
 
     QMovie *syncIconMovie;
-
-    uint64_t nWeight;
+    /** Keep track of previous number of blocks, to detect progress */
+    int prevBlocks;
 
     /** Create the main UI actions. */
     void createActions();
@@ -111,8 +122,16 @@ private:
     void createMenuBar();
     /** Create the toolbars */
     void createToolBars();
-    /** Create system tray (notification) icon */
+    /** Create system tray icon and notification */
     void createTrayIcon();
+    /** Create system tray menu (or setup the dock menu) */
+    void createTrayIconMenu();
+    /** Save window size and position */
+    void saveWindowGeometry();
+    /** Restore window size and position */
+    void restoreWindowGeometry();
+    /** Enable or disable all wallet-related actions */
+    void setWalletActionsEnabled(bool enabled);
 
 public slots:
     /** Set number of connections shown in the UI */
@@ -125,8 +144,14 @@ public slots:
     */
     void setEncryptionStatus(int status);
 
-    /** Notify the user of an error in the network or transaction handling code. */
-    void error(const QString &title, const QString &message, bool modal);
+    /** Notify the user of an event from the core network or transaction handling code.
+       @param[in] title     the message box / notification title
+       @param[in] message   the displayed text
+       @param[in] style     modality and style definitions (icon and used buttons - buttons only for message boxes)
+                            @see CClientUIInterface::MessageBoxFlags
+       @param[in] ret       pointer to a bool that will be modified to whether Ok was clicked (modal only)
+    */
+    void message(const QString &title, const QString &message, unsigned int style, bool *ret = NULL);
     /** Asks the user whether to pay the transaction fee or to cancel the transaction.
        It is currently not possible to pass a return value to another thread through
        BlockingQueuedConnection, so an indirected pointer is used.
@@ -138,6 +163,9 @@ public slots:
     void askFee(qint64 nFeeRequired, bool *payFee);
     void handleURI(QString strURI);
 
+    /** Show incoming transaction notification for new transactions. */
+    void incomingTransaction(const QString& date, int unit, qint64 amount, const QString& type, const QString& address);
+
 private slots:
     /** Switch to overview (home) page */
     void gotoOverviewPage();
@@ -148,7 +176,7 @@ private slots:
     /** Switch to receive coins page */
     void gotoReceiveCoinsPage();
     /** Switch to send coins page */
-    void gotoSendCoinsPage();
+    void gotoSendCoinsPage(QString addr = "");
 
     /** Show Sign/Verify Message dialog and switch to sign message tab */
     void gotoSignMessageTab(QString addr = "");
@@ -163,29 +191,14 @@ private slots:
     /** Handle tray icon clicked */
     void trayIconActivated(QSystemTrayIcon::ActivationReason reason);
 #endif
-    /** Show incoming transaction notification for new transactions.
-
-        The new items are those between start and end inclusive, under the given parent item.
-    */
-    void incomingTransaction(const QModelIndex & parent, int start, int end);
-    /** Encrypt the wallet */
-    void encryptWallet(bool status);
-    /** Backup the wallet */
-    void backupWallet();
-    /** Change encrypted wallet passphrase */
-    void changePassphrase();
-    /** Ask for passphrase to unlock wallet temporarily */
-    void unlockWallet();
-
-    void lockWallet();
 
     /** Show window if hidden, unminimize when minimized, rise when obscured or show if hidden and fToggleHidden is true */
     void showNormalIfMinimized(bool fToggleHidden = false);
-    /** simply calls showNormalIfMinimized(true) for use in SLOT() macro */
+    /** Simply calls showNormalIfMinimized(true) for use in SLOT() macro */
     void toggleHidden();
 
-    void updateWeight();
-    void updateStakingIcon();
+    /** called by a timer to check if fRequestShutdown has been set **/
+    void detectShutdown();
 };
 
-#endif
+#endif // BITCOINGUI_H
